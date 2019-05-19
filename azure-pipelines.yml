@@ -1,5 +1,5 @@
 variables:
-  libplistBuild: 8
+  libplistBuild: 281
 jobs:
 - job: windows
   strategy:
@@ -77,71 +77,17 @@ jobs:
       # Patch the pkg-config files. The path to the artifacts directory includes the version number of the
       # VSTS agent, which may change.
       LC_CTYPE=C LANG=C find $SYSTEM_ARTIFACTSDIRECTORY/libplist/$RID/lib/pkgconfig -name '*.pc' -print0 | xargs -0 sed -i -e "s@/Users/vsts/agent/[0-9]*\.[0-9]*\.[0-9]*/work/1/a/@$BUILD_ARTIFACTSTAGINGDIRECTORY/@g"
-
       export PKG_CONFIG_PATH="$SYSTEM_ARTIFACTSDIRECTORY/libplist/$RID/lib/pkgconfig:$PKG_CONFIG_PATH"
       ./autogen.sh --prefix=$BUILD_ARTIFACTSTAGINGDIRECTORY/libusbmuxd/$RID --host=$TARGET --enable-static=no --enable-shared=yes
       make
     displayName: Build
   - script: |
       make install
-
       echo $BUILD_REPOSITORY_URI\n >> $BUILD_ARTIFACTSTAGINGDIRECTORY/libusbmuxd/$RID/gitinfo
       echo $BUILD_SOURCEVERSION >> $BUILD_ARTIFACTSTAGINGDIRECTORY/libusbmuxd/$RID/gitinfo
-
       export INSTALLDIR=$SYSTEM_ARTIFACTSDIRECTORY/libusbmuxd/$RID
       ./build/patchdylib.sh
     displayName: Install
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/libusbmuxd' 
-      artifactName: 'libusbmuxd' 
-      publishLocation: 'Container'
-    displayName: Publish
-
-- job: linux
-  variables:
-    TARGET: x86_64-unknown-linux-gnu
-    RID: ubuntu.16.04-x64
-    CFLAGS: -fPIC
-  pool:
-    vmImage: 'ubuntu-16.04'
-  steps:
-  - script: |
-      lsb_release -a
-      sudo apt-get remove -y libssl1.1 ant
-      sudo add-apt-repository --remove -y ppa:ondrej/php
-      sudo apt-get install -y software-properties-common
-      sudo apt-get update
-    displayName: Check Ubuntu version, remove non-standard libssl1.1
-  - task: DownloadBuildArtifacts@0
-    inputs:
-      buildType: 'specific'
-      project: 'imobiledevice-net'
-      pipeline: '2'
-      buildVersionToDownload: 'specific'
-      buildId: $(libplistBuild)
-      downloadType: 'single'
-      artifactName: 'libplist'
-      downloadPath: '$(System.ArtifactsDirectory)'
-    displayName: 'Download libplist artifacts'
-  - script: |
-      export PKG_CONFIG_PATH="$SYSTEM_ARTIFACTSDIRECTORY/libplist/$RID/lib/pkgconfig:$PKG_CONFIG_PATH"
-      ./autogen.sh --prefix=$BUILD_ARTIFACTSTAGINGDIRECTORY/libusbmuxd/$RID --host=$TARGET --enable-static=no --enable-shared=yes
-      make
-    displayName: Build
-  - script: |
-      make install
-
-      export INSTALLDIR=$SYSTEM_ARTIFACTSDIRECTORY/libusbmuxd/$RID
-      ./build/install-patchelf.sh
-      ./build/run-patchelf.sh
-
-      echo $BUILD_REPOSITORY_URI\n >> $BUILD_ARTIFACTSTAGINGDIRECTORY/libusbmuxd/$RID/gitinfo
-      echo $BUILD_SOURCEVERSION >> $BUILD_ARTIFACTSTAGINGDIRECTORY/libusbmuxd/$RID/gitinfo
-    displayName: Install
-  - script: |
-      git archive --format tar.gz -o $BUILD_ARTIFACTSTAGINGDIRECTORY/libusbmuxd/libusbmuxd.orig.tar.gz $BUILD_SOURCEVERSION
-    displayName: Build source tarball
   - task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: '$(Build.ArtifactStagingDirectory)/libusbmuxd' 
